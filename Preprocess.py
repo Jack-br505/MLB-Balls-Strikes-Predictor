@@ -1,21 +1,34 @@
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
-
+#load data
 pitches = pd.read_csv("Data/Data_MLB_2025_StatcastPostseason_PitchByPitch_20251102a.csv")
 
+#Convert outcome string to a numeric value
 pitch_outcome_num = []
 for i in range(pitches.shape[0]):
-    if pitches.loc[i, 'description'] in ['called_strike', 'foul', 'swinging_strike', 'foul_tip']:
+    if pitches.loc[i, 'description'] in ['called_strike', 'foul', 'swinging_strike', 'foul_tip']: #All of these are counting as strikes
         pitch_outcome_num.append(1)
     elif pitches.loc[i, 'description'] == 'ball':
         pitch_outcome_num.append(0)
     else:
         pitch_outcome_num.append(2)
-
+#Add numeric outcome to data
 pitches['outcome'] = pitch_outcome_num
 
-feature_cols = pitches[['balls', 'strikes', 'inning', 'pitch_number', 'on_3b', 'on_2b', 'on_1b', 'outs_when_up',
-              'bat_score', 'pitcher', 'batter', 'outcome']]
+#Feature engineering
+#Make the score a differential instead of straight score
+pitches['score_diff'] = pitches['bat_score'] - pitches['fld_score']
+#Create variable for the advantage of pitcher / batter
+pitches['count_advantage'] = pitches['balls'] - pitches['strikes']
+#Create variable for handedness matchup, 0 for same, 1 for different
+pitches["Handedness"] = np.where(pitches['stand'] == pitches['p_throws'], 0, 1)
+
+
+
+#Select wanted columns
+feature_cols = pitches[['pitch_number', 'count_advantage', 'inning', 'pitch_number', 'on_3b', 'on_2b', 'on_1b', 'outs_when_up',
+              'score_diff', 'pitcher', 'batter', 'outcome']]
 
 
 feature_cols = feature_cols.fillna(0)
@@ -78,4 +91,16 @@ no_player_features = unmerged.drop(columns = ['pitcher_id', 'batter', 'outcome']
 labels = feature_cols['outcome']
 
 train_player_features, test_player_features, train_labels, test_labels = train_test_split(player_features, labels, test_size=0.2)
-train_no_player_features, test_no_player_features, train_labels, test_labels = train_test_split(player_features, labels, test_size=0.2)
+train_no_player_features, test_no_player_features, train_labels, test_labels = train_test_split(no_player_features, labels, test_size=0.2)
+
+# Save player-based features
+train_player_features.to_csv('Processed_Data/train_player_features.csv', index=False)
+test_player_features.to_csv('Processed_Data/test_player_features.csv', index=False)
+
+# Save non-player features
+train_no_player_features.to_csv('Processed_Data/train_no_player_features.csv', index=False)
+test_no_player_features.to_csv('Processed_Data/test_no_player_features.csv', index=False)
+
+# Save labels
+train_labels.to_csv('Processed_Data/train_labels.csv', index=False)
+test_labels.to_csv('Processed_Data/test_labels.csv', index=False)
