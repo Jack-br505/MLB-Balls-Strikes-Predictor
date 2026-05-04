@@ -16,6 +16,20 @@ for i in range(pitches.shape[0]):
 #Add numeric outcome to data
 pitches['outcome'] = pitch_outcome_num
 
+
+#Replace baserunner ID, with a 1 or 0, for if a runners on or not
+#Turn all NA to 0
+for col in ['on_1b', 'on_2b', 'on_3b']:
+    pitches[col] = pd.to_numeric(pitches[col], errors='coerce').fillna(0).astype(int)
+for i in range(pitches.shape[0]):
+    if pitches.loc[i, 'on_3b'] != 0:
+        pitches.loc[i, 'on_3b'] = 1.0
+    if pitches.loc[i, 'on_2b'] != 0:
+        pitches.loc[i, 'on_2b'] = 1.0
+    if pitches.loc[i, 'on_1b'] != 0:
+        pitches.loc[i, 'on_1b'] = 1.0
+
+
 #Feature engineering
 #Make the score a differential instead of straight score
 pitches['score_diff'] = pitches['bat_score'] - pitches['fld_score']
@@ -23,24 +37,22 @@ pitches['score_diff'] = pitches['bat_score'] - pitches['fld_score']
 pitches['count_advantage'] = pitches['balls'] - pitches['strikes']
 #Create variable for handedness matchup, 0 for same, 1 for different
 pitches["Handedness"] = np.where(pitches['stand'] == pitches['p_throws'], 0, 1)
-
-
+#Create variable for runners in scoring positon (2nd or 3rd)
+pitches['RISP'] = 0 
+for i in range(len(pitches['RISP'])):
+    if pitches.loc[i, 'on_3b'] == 1 or pitches.loc[i, 'on_2b'] == 1:
+        pitches.loc[i, 'RISP'] = 1
+#Create variable for if there is a double play oppurtunity(could influence outcome)
+pitches['DP_chance'] = np.where((pitches['on_1b'] == 1) & (pitches['outs_when_up'] != 2), 1, 0)
+#Create variable for whether bases are loaded, pitchers can't walk batters
+pitches['bases_loaded'] = np.where((pitches['on_1b'] == 1) & (pitches['on_2b'] == 1) & (pitches['on_3b'] == 1), 1, 0)
 
 #Select wanted columns
-feature_cols = pitches[['pitch_number', 'count_advantage', 'inning', 'pitch_number', 'on_3b', 'on_2b', 'on_1b', 'outs_when_up',
-              'score_diff', 'pitcher', 'batter', 'outcome']]
+feature_cols = pitches[['pitch_number', 'count_advantage', 'inning', 'pitch_number', 'RISP', 'DP_chance', 'outs_when_up', 'bases_loaded',
+                        'score_diff', 'pitcher', 'batter', 'outcome']]
 
 
 feature_cols = feature_cols.fillna(0)
-
-for i in range(feature_cols.shape[0]):
-    if feature_cols.loc[i, 'on_3b'] != 0.0:
-        feature_cols.loc[i, 'on_3b'] = 1.0
-    if feature_cols.loc[i, 'on_2b'] != 0.0:
-        feature_cols.loc[i, 'on_2b'] = 1.0
-    if feature_cols.loc[i, 'on_1b'] != 0.0:
-        feature_cols.loc[i, 'on_1b'] = 1.0
-
 
 #Remove hits from dataset so its only ball and strike outcomes
 feature_cols = feature_cols[feature_cols['outcome'] != 2]
@@ -90,8 +102,8 @@ no_player_features = unmerged.drop(columns = ['pitcher_id', 'batter', 'outcome']
 
 labels = feature_cols['outcome']
 
-train_player_features, test_player_features, train_labels, test_labels = train_test_split(player_features, labels, test_size=0.2)
-train_no_player_features, test_no_player_features, train_labels, test_labels = train_test_split(no_player_features, labels, test_size=0.2)
+train_player_features, test_player_features, train_labels, test_labels = train_test_split(player_features, labels, test_size=0.2, random_state=20)
+train_no_player_features, test_no_player_features, train_labels, test_labels = train_test_split(no_player_features, labels, test_size=0.2, random_state=20)
 
 # Save player-based features
 train_player_features.to_csv('Processed_Data/train_player_features.csv', index=False)
