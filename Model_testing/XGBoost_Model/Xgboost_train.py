@@ -24,6 +24,7 @@ player_model = xgb.XGBClassifier(
 train_labels = train_labels.values.ravel()
 test_labels = test_labels.values.ravel()
 
+
 # Fit model
 player_model.fit(player_train_features, train_labels)
 

@@ -1,6 +1,7 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score
 import pandas as pd
+import numpy as np
 
 #Load in the processed data
 player_train_features = pd.read_csv('Processed_Data/train_player_features.csv')
@@ -89,3 +90,5 @@ base_importance_df = pd.DataFrame({
 }).sort_values(by='Importance', ascending=False)
 print("\nBase Model Feature Importances:")
 print(base_importance_df)
+
+print(np.mean(test_pred))

@@ -33,8 +33,15 @@ for i in range(pitches.shape[0]):
 #Feature engineering
 #Make the score a differential instead of straight score
 pitches['score_diff'] = pitches['bat_score'] - pitches['fld_score']
+
 #Create variable for the advantage of pitcher / batter
 pitches['count_advantage'] = pitches['balls'] - pitches['strikes']
+
+#Or can make count seperate strings
+pitches['count'] = ''
+for i in range(len(pitches)):
+    count = str(pitches.loc[i, 'balls']) + ', ' + str(pitches.loc[i, 'strikes'])
+    pitches.loc[i, 'count'] = count
 #Create variable for handedness matchup, 0 for same, 1 for different
 pitches["Handedness"] = np.where(pitches['stand'] == pitches['p_throws'], 0, 1)
 #Create variable for runners in scoring positon (2nd or 3rd)
@@ -48,7 +55,7 @@ pitches['DP_chance'] = np.where((pitches['on_1b'] == 1) & (pitches['outs_when_up
 pitches['bases_loaded'] = np.where((pitches['on_1b'] == 1) & (pitches['on_2b'] == 1) & (pitches['on_3b'] == 1), 1, 0)
 
 #Select wanted columns
-feature_cols = pitches[['pitch_number', 'count_advantage', 'inning', 'pitch_number', 'RISP', 'DP_chance', 'outs_when_up', 'bases_loaded',
+feature_cols = pitches[['pitch_number', 'count_advantage', 'inning', 'RISP', 'DP_chance', 'outs_when_up', 'bases_loaded',
                         'score_diff', 'pitcher', 'batter', 'outcome']]
 
 
@@ -101,6 +108,22 @@ player_features = feature_cols.drop(columns = ['pitcher_id', 'batter_id', 'outco
 no_player_features = unmerged.drop(columns = ['pitcher_id', 'batter', 'outcome'])
 
 labels = feature_cols['outcome']
+
+for i in range(len(player_features)):
+    #Change NaN values to be median values
+
+    #Go through 4 cols that have NaN values
+    if pd.isna(player_features.loc[i, 'p_in_zone_percent']):
+        player_features.loc[i, 'p_in_zone_percent'] = player_features['p_in_zone_percent'].median()
+    
+    if pd.isna(player_features.loc[i, 'p_whiff_percent']):
+        player_features.loc[i, 'p_whiff_percent'] = player_features['p_whiff_percent'].median()
+    
+    if pd.isna(player_features.loc[i, 'b_in_zone_percent']):
+        player_features.loc[i, 'b_in_zone_percent'] = player_features['b_in_zone_percent'].median()
+
+    if pd.isna(player_features.loc[i, 'b_oz_swing_miss_percent']):
+        player_features.loc[i, 'b_oz_swing_miss_percent'] = player_features['b_oz_swing_miss_percent'].median()
 
 train_player_features, test_player_features, train_labels, test_labels = train_test_split(player_features, labels, test_size=0.2, random_state=20)
 train_no_player_features, test_no_player_features, train_labels, test_labels = train_test_split(no_player_features, labels, test_size=0.2, random_state=20)
