@@ -74,6 +74,9 @@ else:
                 st.write("Venue:", venue)
             if inning != " ":
                 st.write("Inning:", inning)
+                #Save to session state
+                st.session_state['inning'] = inning
+                st.session_state['inning_state'] = game.get('inning_state')
 
             # Dump the raw schedule entry for debugging/extension
             #st.write(game)

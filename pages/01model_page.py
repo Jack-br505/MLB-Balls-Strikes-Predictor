@@ -21,7 +21,6 @@ st.subheader(f"{away} @ {home}")
 #Get deafult values or known values 
 balls = "0"
 strikes = "0"
-inning = game.get('current_inning')
 
 
 #Get the rosters for the teams for switching pitchers / batters
@@ -35,6 +34,18 @@ h_table = [line.split("  ") for line in home_roster.split("\n")]
 #Remove last element because that is an empty list
 a_table.pop(-1)
 h_table.pop(-1)
+
+#had issue with spaces in names like Emmanuel De Jesus
+#Merge 3rd and 4th elements if there was a 4th elemnt in list caused by a spaced out name
+a_table = [
+    lst[:2] + [lst[2] + ' ' + lst[3]] if len(lst) == 4 else lst 
+    for lst in a_table
+]
+h_table = [
+    lst[:2] + [lst[2] + ' ' + lst[3]] if len(lst) == 4 else lst 
+    for lst in h_table
+]
+
 #Remove leading spaces from player name
 for list in a_table:
     list[2] = list[2].lstrip()
@@ -79,12 +90,21 @@ with col2:
         st.text_input(away, value = st.session_state['away_score'], placeholder="0")
         st.text_input(home, value = st.session_state['home_score'], placeholder="0")
 
-st.session_state['inning_state'] = game.get('inning_state')
 
 with col3:
     with st.container(border=True):
         st.subheader("Inning")
-        st.write(st.session_state['inning_state'], str(inning))
+        #st.write(st.session_state['inning_state'], str(inning))
+        state = st.selectbox(
+            "State",
+            ["Top", "Bottom"],
+            key="inning_state_box"
+        )
+        inning = st.selectbox(
+            "Number",
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+            key = 'inning_box'
+        )
         st.subheader("Outs")
         outs = st.selectbox('Outs', ["0", "1", "2"], key = 'out_box')
 
@@ -168,7 +188,7 @@ if st.button("Predict Pitch", key = "predict"):
     else:
         temp_df['p_in_zone_percent'] = pitcher_data['in_zone_percent'].median()
         temp_df['p_whiff_percent'] = pitcher_data['whiff_percent'].median()
-        st.write("Error: Pitcher Data not Found")
+        #st.write("Error: Pitcher Data not Found")
 
     #Do same for hitters
     batter_data = st.session_state['batter_metrics']
@@ -180,7 +200,7 @@ if st.button("Predict Pitch", key = "predict"):
     else:
         temp_df['b_in_zone_percent'] = batter_data['in_zone_percent'].median()
         temp_df['b_oz_swing_miss_percent'] = batter_data['oz_swing_miss_percent'].median()
-        st.write("Error: Batter Data not Found")
+        #st.write("Error: Batter Data not Found")
     
     y_pred = model.predict(temp_df)
 
@@ -195,8 +215,9 @@ if st.button("Predict Pitch", key = "predict"):
 st.subheader("Acutal Outcome")
 
 #Create variables to track correct and incorrect
-st.session_state['correct'] = 0
-st.session_state['incorrect'] = 0
+if st.session_state['correct'] == None:
+    st.session_state['correct'] = 0
+    st.session_state['incorrect'] = 0
 
 s_col, b_col, f_col, o_col, h_col = st.columns(5)
 
@@ -237,13 +258,15 @@ def increment_out(inning = inning):
 
     #Change inning if 3 outs
     if st.session_state['out_box'] == "0":
-        if (inning == 9 and st.session_state['inning_state'] == 'Bottom') or (inning == 9 and st.session_state['home_score'] > st.session_state['away_score']):
+        #Change inning state
+        increment_selectbox('inning_state_box', ['Top', 'Bottom']) #Change state
+
+        if (int(inning) == 9 and state == 'Bottom') or (int(inning) == 9 and st.session_state['home_score'] > st.session_state['away_score']):
             inning = "Game Finished"
             st.session_state['inning_state'] = ""
-        elif st.session_state['inning_state'] == 'Top': #If top of inning switch inning state
-            st.session_state['inning_state'] = 'Bottom'
-        else:
-            inning += 1 #Increase inning if bottom of inning
+
+        elif state == 'Bottom': #If new inning switch inning num
+            increment_selectbox('inning_box', ["1", "2", "3", "4", "5", "6", "7", "8", "9"]) #Increase inning if bottom of inning
 
 def increment_strike():
     increment_selectbox('strikes_box', strike_options)
@@ -255,8 +278,10 @@ def increment_strike():
     #Change the counters
     if st.session_state['last_prediction'] == 1:
         st.session_state['correct'] += 1
+        correct.metric(label="Correct", value=f"{st.session_state['correct']}")
     else:
         st.session_state['incorrect'] += 1
+        incorrect.metric(label="Correct", value=f"{st.session_state['incorrect']}")
 
     
 def increment_foul():
@@ -267,8 +292,10 @@ def increment_foul():
     #Change the counters
     if st.session_state['last_prediction'] == 1:
         st.session_state['correct'] += 1
+        correct.metric(label="Correct", value=f"{st.session_state['correct']}")
     else:
         st.session_state['incorrect'] += 1
+        incorrect.metric(label="Correct", value=f"{st.session_state['incorrect']}")
 
 def increment_ball():
     increment_selectbox('balls_box', ball_options)
@@ -278,8 +305,10 @@ def increment_ball():
     #Change the counters
     if st.session_state['last_prediction'] == 0:
         st.session_state['correct'] += 1
+        correct.metric(label="Correct", value=f"{st.session_state['correct']}")
     else:
         st.session_state['incorrect'] += 1
+        incorrect.metric(label="Correct", value=f"{st.session_state['incorrect']}")
 #Add options_lists for the possible boxes
 strike_options = ['0', '1', '2']
 ball_options = ['0', '1', '2', '3']
@@ -306,7 +335,9 @@ right, wrong = st.columns(2)
 
 with right:
     st.subheader("Correct")
-    st.write(str(st.session_state['correct']))
+    if st.session_state['correct'] == 0:
+        correct = st.empty()
 with wrong:
     st.subheader("Incorrect")
-    st.write(str(st.session_state['incorrect']))
+    if st.session_state['incorrect'] == 0:
+        incorrect = st.empty()
