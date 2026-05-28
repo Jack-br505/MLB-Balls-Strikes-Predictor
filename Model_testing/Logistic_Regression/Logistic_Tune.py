@@ -1,6 +1,6 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
 import pandas as pd
 import joblib
 import numpy as np
@@ -27,8 +27,8 @@ param_grid = {
     'C': [0.001, 0.01, 0.1, 1, 10, 100],
     'l1_ratio' : [0],
     'solver': ['lbfgs', 'liblinear', 'saga'],
-    'max_iter': [200, 500, 1000],
-    'class_weight': [None, 'balanced']
+    'max_iter': [100, 200, 500, 1000],
+    'class_weight': ['balanced', None]
 }
 
 # Instantiate the Logistic Regression classifier
@@ -39,7 +39,7 @@ grid_search = GridSearchCV(
     estimator=lr,
     param_grid=param_grid,
     cv=5,  # 5-fold cross-validation
-    scoring='f1',  # Use F1 score for evaluation (good for binary classification)
+    scoring='balanced_accuracy',  # Use F1 score for evaluation (good for binary classification)
     n_jobs=-1,  # Use all available cores
     verbose=1
 )
@@ -61,16 +61,16 @@ try:
     curr_model = joblib.load('Model_testing/Logistic_Regression/final_model.pkl')
     y_pred_curr = curr_model.predict(player_test_features)
 
-    curr_accuracy = accuracy_score(test_labels, y_pred_curr)
-    new_accuracy = accuracy_score(test_labels, y_pred_best)
+    curr_accuracy = balanced_accuracy_score(test_labels, y_pred_curr)
+    new_accuracy = balanced_accuracy_score(test_labels, y_pred_best)
 
     if new_accuracy > curr_accuracy:
         joblib.dump(best_model, 'Model_testing/Logistic_Regression/final_model.pkl')
         print("New params saved to final_model.pkl")
     else:
-        print("Final model is not changed; \n Final model Accuracy is:", curr_accuracy)
+        print("Final model is not changed; \n Final model Accuracy is:", accuracy_score(test_labels,y_pred_curr))
 except:
     joblib.dump(best_model, 'Model_testing/Logistic_Regression/final_model.pkl')
     print("First model saved to final_model.pkl")
 
-print("Mean of y_pred", np.mean(y_pred_curr))
+print("Mean of y_pred", np.mean(y_pred_best))

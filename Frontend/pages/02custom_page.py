@@ -1,3 +1,5 @@
+
+#Same as 01 model page but team names are a text input 
 import streamlit as st
 import statsapi
 import pandas as pd
@@ -5,7 +7,7 @@ import joblib
 from sklearn.ensemble import RandomForestClassifier
 
 st.set_page_config(
-    page_title= "MLB Pitch Predictor (Model Use)",
+    page_title= "MLB Pitch Predictor (Model Use Custom Scenario)",
     page_icon='⚾️',
     layout = 'wide'
 )
@@ -14,18 +16,20 @@ st.caption("Enter the specific values for the pitch and get a prediction")
 #Load in game details
 game = st.session_state['Game']
 
-away = game.get('away_name') 
-home = game.get('home_name')
-st.subheader(f"{away} @ {home}")
+
+st.subheader(f"{st.session_state['Away_Team']} @ {st.session_state['Home_Team']}")
 
 #Get deafult values or known values 
 balls = "0"
 strikes = "0"
 
-
+#Start here
 #Get the rosters for the teams for switching pitchers / batters
-away_roster = statsapi.roster(game.get('away_id'))
-home_roster = statsapi.roster(game.get('home_id'))
+away_id = statsapi.lookup_team(st.session_state['Away_Team'])[0]['id']
+home_id = statsapi.lookup_team(st.session_state['Home_Team'])[0]['id']
+
+away_roster = away_roster = statsapi.roster(away_id)
+home_roster = statsapi.roster(home_id)
 
 #Convert string output of roster function to a list
 a_table = [line.split("  ") for line in away_roster.split("\n")]
@@ -35,7 +39,7 @@ h_table = [line.split("  ") for line in home_roster.split("\n")]
 a_table.pop(-1)
 h_table.pop(-1)
 
-#had issue with spaces in names like Emmanuel De Jesus
+#had issue with spaces in names like <Emmanuel De  Jesus>
 #Merge 3rd and 4th elements if there was a 4th elemnt in list caused by a spaced out name
 a_table = [
     lst[:2] + [lst[2] + ' ' + lst[3]] if len(lst) == 4 else lst 
@@ -56,7 +60,7 @@ away_roster_df = pd.DataFrame(a_table, columns=['Number', 'Position', 'Name'])
 home_roster_df = pd.DataFrame(h_table, columns=['Number', 'Position', 'Name'])
 
 #Find starting pitchers to use as default
-if game.get('inning_state') == 'Top' or game.get("inning_state" == "End"):
+if st.session_state['Inning_state'] == 'Top' or st.session_state['Inning_state'] == "End":
     s_pitcher = game.get('home_probable_pitcher') #Home team pitcher if home team is pitching
 else:
     s_pitcher = game.get('away_probable_pitcher')
@@ -80,15 +84,15 @@ with col1:
             ["0", "1", "2"],
             key="strikes_box"
         )
-#Set deafult values for the score variable
+#Set deafult values for the score variables
 st.session_state['away_score'] = "0"
 st.session_state['home_score'] = "0"
 
 with col2:
     with st.container(border=True):
         st.subheader("Score:")
-        st.text_input(away, value = st.session_state['away_score'], placeholder="0")
-        st.text_input(home, value = st.session_state['home_score'], placeholder="0")
+        st.text_input(f"{st.session_state['Away_Team']}", value = st.session_state['away_score'], placeholder="0")
+        st.text_input(f"{st.session_state['Home_Team']}", value = st.session_state['home_score'], placeholder="0")
 
 
 with col3:
@@ -141,9 +145,11 @@ with col5:
 #Load in model
 model = joblib.load('Model_testing/Random_Forest/final_model.pkl')
 
+#set y_pred to 2 by deafult to get rid of error on startup
+y_pred = 2
 
 #Create button to predict pitch and move count ahead
-if st.button("Predict Pitch", key = "predict"):
+if st.button("Predict Pitch", use_container_width=True, key = "predict"):
     #needed columns are  'pitch_number', 'count_advantage', 'inning',  'RISP', 'DP_chance', 'outs_when_up', 'bases_loaded','score_diff', player metrics
     #Create empty dataframe to keep data
     col_names = ['pitch_number', 'count_advantage', 'inning',  'RISP', 'DP_chance', 'outs_when_up', 'bases_loaded','score_diff',
@@ -205,19 +211,18 @@ if st.button("Predict Pitch", key = "predict"):
     y_pred = model.predict(temp_df)
 
     st.session_state['last_prediction'] = y_pred[0] #Save val
+#Write out prediction
+#Write out prediction
+if y_pred == 1:
+    p ="Strike"
+elif y_pred == 0:
+    p = "Ball"
+else:
+    p = ''
 
-    if y_pred == 1:
-        st.write("Strike")
-    else:
-        st.write("Ball")
-
+st.write(f"Prediction: {p}")
 #Create section where user can enter the actual outcome, advancing numbers and tracking accuracy
 st.subheader("Acutal Outcome")
-
-#Create variables to track correct and incorrect
-if st.session_state['correct'] == None:
-    st.session_state['correct'] = 0
-    st.session_state['incorrect'] = 0
 
 s_col, b_col, f_col, o_col, h_col = st.columns(5)
 
@@ -277,11 +282,9 @@ def increment_strike():
     
     #Change the counters
     if st.session_state['last_prediction'] == 1:
-        st.session_state['correct'] += 1
-        correct.metric(label="Correct", value=f"{st.session_state['correct']}")
+        st.session_state['correct'] = str( int(st.session_state['correct']) + 1)
     else:
-        st.session_state['incorrect'] += 1
-        incorrect.metric(label="Correct", value=f"{st.session_state['incorrect']}")
+        st.session_state['incorrect'] = str( int(st.session_state['incorrect']) + 1)
 
     
 def increment_foul():
@@ -291,11 +294,9 @@ def increment_foul():
     
     #Change the counters
     if st.session_state['last_prediction'] == 1:
-        st.session_state['correct'] += 1
-        correct.metric(label="Correct", value=f"{st.session_state['correct']}")
+        st.session_state['correct'] = str(int(st.session_state['correct']) + 1)
     else:
-        st.session_state['incorrect'] += 1
-        incorrect.metric(label="Correct", value=f"{st.session_state['incorrect']}")
+        st.session_state['incorrect'] = str( int(st.session_state['incorrect']) + 1)
 
 def increment_ball():
     increment_selectbox('balls_box', ball_options)
@@ -304,11 +305,9 @@ def increment_ball():
 
     #Change the counters
     if st.session_state['last_prediction'] == 0:
-        st.session_state['correct'] += 1
-        correct.metric(label="Correct", value=f"{st.session_state['correct']}")
+        st.session_state['correct'] = str( int(st.session_state['correct']) + 1)
     else:
-        st.session_state['incorrect'] += 1
-        incorrect.metric(label="Correct", value=f"{st.session_state['incorrect']}")
+        st.session_state['incorrect'] = str( int(st.session_state['incorrect']) + 1)
 #Add options_lists for the possible boxes
 strike_options = ['0', '1', '2']
 ball_options = ['0', '1', '2', '3']
@@ -317,27 +316,26 @@ out_options = ['0', '1', '2']
   
 #Make the buttons
 with s_col:
-    st.button("Strike", key = "strike_button", on_click = increment_strike)#If user says actual pitch was a strike
+    st.button("Strike", key = "strike_button",  use_container_width=True, on_click = increment_strike)#If user says actual pitch was a strike
 
 with b_col:
-    st.button("Ball", key = 'ball_button', on_click= increment_ball)
+    st.button("Ball", key = 'ball_button', use_container_width=True, on_click= increment_ball)
 
 with f_col:
-    st.button("Foul Ball", key = 'foul_button', on_click= increment_foul)
+    st.button("Foul Ball", key = 'foul_button', use_container_width=True, on_click= increment_foul)
 
 with o_col:
-    st.button("Put in play (Out)", key = 'out_button', on_click= increment_out)
+    st.button("Put in play (Out)", key = 'out_button',  use_container_width=True, on_click= increment_out)
 with h_col:
-    st.button("Hit", key = 'hit_button', on_click= reset_count)
+    st.button("Hit", key = 'hit_button', use_container_width=True,  on_click= reset_count)
 
 st.subheader("Overall Accuracy")
 right, wrong = st.columns(2)
 
 with right:
     st.subheader("Correct")
-    if st.session_state['correct'] == 0:
-        correct = st.empty()
+    st.write(f"### {st.session_state['correct']}")
 with wrong:
     st.subheader("Incorrect")
-    if st.session_state['incorrect'] == 0:
-        incorrect = st.empty()
+    
+    st.write(f"### {st.session_state['incorrect']}")
