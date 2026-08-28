@@ -1,4 +1,4 @@
-# Clase
+# MLB Balls Strikes Predictor
 Machine Learning project aimed at predicting whether a pitch will be a ball or strike by using MLB data about the conditions at the time of the pitch.
 
 Uses Pitch Data from the 2025 postseason, taken from Kaggle: https://www.kaggle.com/datasets/janus137/mlb-postseason-2025-pitch-by-pitch-data to get conditions of the at-bat such as outs, score, and baserunners. Takes 2025 regular season player data to determine different batting and pitching statistics of the players, from Baseball Savant. 
@@ -27,4 +27,4 @@ Csv files of the data processed for the models use.
 
 ## Frontend
 
-Very basic frontend using streamlit to live track MLB games using the statsapi package. Can make a custom scenario or tracj live games by inputting data and getting the pitch prediction.  The final model in the frontend uses the RandomForest Model as that was most accurate in testing. 
+Very basic frontend using streamlit to live track MLB games using the statsapi package. Can make a custom scenario or track live games by inputing data and getting the pitch prediction.  The final model in the frontend uses the RandomForest Model as that was most accurate in testing. 
